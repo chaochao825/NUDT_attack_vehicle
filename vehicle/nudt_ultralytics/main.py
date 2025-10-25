@@ -3,7 +3,7 @@ os.environ['YOLO_VERBOSE'] = 'false'
 
 import yaml
 from easydict import EasyDict
-from ultralytics import YOLO
+from .ultralytics import YOLO
 
 from nudt_ultralytics.callbacks.callbacks import callbacks_dict
 

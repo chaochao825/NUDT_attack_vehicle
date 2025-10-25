@@ -18,6 +18,8 @@ from ultralytics.utils.torch_utils import select_device
 
 from nudt_ultralytics.callbacks.callbacks import callbacks_dict
 
+from utils.sse import sse_adv_samples_gen_validated
+
 class attacks:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -76,8 +78,9 @@ class attacks:
             from torchvision import transforms
             to_pil = transforms.ToPILImage()
             pil_image = to_pil(adv_images[0])
-            pil_image.save(f'{self.cfg.save_dir}/adv_images_{batch_i}.jpg')
-        
+            adv_image_name = f'{self.cfg.save_dir}/adv_images_{batch_i}.jpg'
+            pil_image.save(adv_image_name)
+            sse_adv_samples_gen_validated(adv_image_name)
         
 ###################################################################################################################################################
 

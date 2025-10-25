@@ -41,6 +41,14 @@ def sse_input_validated(input_path):
         }
         sse_print(event, data)
         
+def sse_adv_samples_gen_validated(adv_image_name):
+        event = "adv_samples_gen_validated"
+        data = {
+            "status": "success",
+            "message": "adv sample is generated.",
+            "file_name": adv_image_name
+        }
+        sse_print(event, data)
 
 # def sse_input_validated(input_path):
 #     if not os.path.exists(input_path):

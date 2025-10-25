@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument('--input_path', type=str, default='./input', help='input path')
     parser.add_argument('--output_path', type=str, default='./output', help='output path')
     
-    parser.add_argument('--process', type=str, default='adv', help='[adv, attack, defend, train]')
+    parser.add_argument('--process', type=str, default='train', help='[adv, attack, defend, train]')
     parser.add_argument('--model', type=str, default='yolov8', help='model name')
     parser.add_argument('--data', type=str, default='imagenet10', help='data name')
     # parser.add_argument('--data', type=str, default='coco8', help='data name')
