@@ -1,13 +1,13 @@
 task: classify
 mode: predict
 model: ./cfgs/yolov8.yaml
-data: ./input/datasets/imagenet10
+data: ./input/data/imagenet10
 imgsz: 224
 epochs: 100
 batch: 1
 device: 0
 workers: 8
-pretrained: ./input/weights/yolov8.pt
+pretrained: ./input/model/yolov8.pt
 resume: false
 optimizer: auto
 project: null

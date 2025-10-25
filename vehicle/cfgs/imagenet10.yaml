@@ -1,4 +1,4 @@
-path: ./input/datasets/imagenet10
+path: ./input/data/imagenet10
 train: train
 val: val
 test: null

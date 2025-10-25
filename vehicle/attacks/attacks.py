@@ -54,44 +54,12 @@ class attacks:
         batch["cls"] = batch["cls"].to(self.device, non_blocking=self.device.type == "cuda")
         return batch
 
-    # def run_adv(self, args):
-    #     data = check_cls_dataset(self.cfg.data, split=self.cfg.split)
-    #     dataset = torchvision.datasets.ImageFolder(root=data.get(self.cfg.split))
-    #     for img_path, cls_id in dataset.imgs.items():
-            
-        
-        
-    #     dataloader = self.get_dataloader()
-    #     desc = self.get_desc()
-    #     bar = TQDM(dataloader, desc=desc, total=len(dataloader))
-    #     for batch_i, batch in enumerate(bar):
-    #         batch = self.preprocess(batch)
-            
-    #         if args.attack_method == 'pgd':
-    #             adv_images = self.pgd(batch["img"], batch["cls"], eps=args.epsilon, alpha=args.step_size, steps=args.max_iterations, random_start=args.random_start)
-    #         elif args.attack_method == 'fgsm':
-    #             adv_images = self.fgsm(batch["img"], batch["cls"], eps=args.epsilon)
-    #         elif args.attack_method == 'cw':
-    #             adv_images = self.cw(batch["img"], batch["cls"], c=1, kappa=0, steps=args.max_iterations, lr=0.01)
-    #         elif args.attack_method == 'bim':
-    #             adv_images = self.bim(batch["img"], batch["cls"], eps=args.epsilon, alpha=args.step_size, steps=args.max_iterations)
-    #         elif args.attack_method == 'deepfool':
-    #             adv_images, _ = self.deepfool(batch["img"], batch["cls"], steps=args.max_iterations, overshoot=0.02)
-    #         else:
-    #             raise ValueError('Invalid attach method!')
-        
-    #     from torchvision import transforms
-    #     to_pil = transforms.ToPILImage()
-    #     pil_image = to_pil(adv_images)
-    #     pil_image.save(f'{self.cfg.save_dir}/adv_images_/{batch_i}.jpg')
-
     def run_adv(self, args):
         dataloader = self.get_dataloader()
         desc = self.get_desc()
         bar = TQDM(dataloader, desc=desc, total=len(dataloader))
         for batch_i, batch in enumerate(bar):
             batch = self.preprocess(batch)
-            
             if args.attack_method == 'pgd':
                 adv_images = self.pgd(batch["img"], batch["cls"], eps=args.epsilon, alpha=args.step_size, steps=args.max_iterations, random_start=args.random_start)
             elif args.attack_method == 'fgsm':
@@ -105,10 +73,10 @@ class attacks:
             else:
                 raise ValueError('Invalid attach method!')
         
-        from torchvision import transforms
-        to_pil = transforms.ToPILImage()
-        pil_image = to_pil(adv_images)
-        pil_image.save(f'{self.cfg.save_dir}/adv_images_/{batch_i}.jpg')
+            from torchvision import transforms
+            to_pil = transforms.ToPILImage()
+            pil_image = to_pil(adv_images[0])
+            pil_image.save(f'{self.cfg.save_dir}/adv_images_{batch_i}.jpg')
         
         
 ###################################################################################################################################################
