@@ -2,6 +2,7 @@ from typing import Any, Dict
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import os
 
 import yaml
 from easydict import EasyDict
@@ -57,6 +58,7 @@ class attacks:
         return batch
 
     def run_adv(self, args):
+        os.makedirs(f'{self.cfg.save_dir}/clean_images', exist_ok=True)
         dataloader = self.get_dataloader()
         desc = self.get_desc()
         bar = TQDM(dataloader, desc=desc, total=len(dataloader))
@@ -77,8 +79,9 @@ class attacks:
         
             from torchvision import transforms
             to_pil = transforms.ToPILImage()
+            print(adv_images[0].shape)
             pil_image = to_pil(adv_images[0])
-            adv_image_name = f'{self.cfg.save_dir}/adv_images_{batch_i}.jpg'
+            adv_image_name = f'{self.cfg.save_dir}/adv_images/adv_image_{batch_i}.jpg'
             pil_image.save(adv_image_name)
             sse_adv_samples_gen_validated(adv_image_name)
         

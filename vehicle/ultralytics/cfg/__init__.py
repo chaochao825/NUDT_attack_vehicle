@@ -300,7 +300,7 @@ def get_cfg(cfg: str | Path | dict | SimpleNamespace = DEFAULT_CFG_DICT, overrid
         - The function performs type and value checks on the configuration data.
     """
     cfg = cfg2dict(cfg)
-
+    
     # Merge overrides
     if overrides:
         overrides = cfg2dict(overrides)

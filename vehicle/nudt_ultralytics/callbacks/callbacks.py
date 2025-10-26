@@ -21,14 +21,15 @@ def on_pretrain_routine_end(trainer):
     }
     sse_print(event, data)
     
-    event = "model_loaded"
-    data = {
-        "status": "success",
-        "message": "Model loaded successfully.",
-        "model_name": trainer.args.model,
-        "model_path": trainer.args.pretrained
-    }
-    sse_print(event, data)
+    if trainer.args.pretrained is not None:
+        event = "model_loaded"
+        data = {
+            "status": "success",
+            "message": "Model loaded successfully.",
+            "model_name": trainer.args.model,
+            "model_path": trainer.args.pretrained
+        }
+        sse_print(event, data)
     
     
 def on_train_start(trainer):

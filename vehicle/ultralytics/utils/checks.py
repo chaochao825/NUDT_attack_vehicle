@@ -324,7 +324,7 @@ def check_font(font="Arial.ttf"):
         (Path): Resolved font file path.
     """
     from matplotlib import font_manager  # scope for faster 'import ultralytics'
-
+    
     # Check USER_CONFIG_DIR
     name = Path(font).name
     file = USER_CONFIG_DIR / name

@@ -19,6 +19,7 @@ resume: False # (bool) resume training from last checkpoint in the run dir
 optimizer: auto # (str) optimizer: SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, or auto
 project: # (str, optional) project name for results root
 name: # (str, optional) experiment name; results in 'project/name'
+save_dir: # (str, optional) project/name
 save: True # (bool) save train checkpoints and predict results
 save_period: -1 # (int) save checkpoint every N epochs; disabled if < 1
 verbose: False # (bool) print verbose logs during training/val

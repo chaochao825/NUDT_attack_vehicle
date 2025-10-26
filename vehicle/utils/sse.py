@@ -22,9 +22,9 @@ def sse_print(event: str, data: dict) -> str:
 
 
 
-def sse_input_validated(input_path):
-    if not os.path.exists(input_path):
-        event = "input_validated"
+def sse_input_path_validated(args):
+    if not os.path.exists(args.input_path):
+        event = "input_path_validated"
         data = {
             "status": "failure",
             "message": "Input path not found."
@@ -32,15 +32,67 @@ def sse_input_validated(input_path):
         sse_print(event, data)
         raise ValueError('Input path not found.')
     else:
-        event = "input_validated"
+        event = "input_path_validated"
         data = {
             "status": "success",
-            "message": "Input zip file is valid and complete.",
-            "file_name": os.path.basename(input_path),
-            "file_size": f"{os.path.getsize(input_path)/1024/1024:.2f}MB"
+            "message": "Input path is valid and complete.",
+            "file_name": args.input_path
         }
         sse_print(event, data)
         
+        if not os.path.exists(f'{args.input_path}/data'):
+            event = "input_data_validated"
+            data = {
+                "status": "failure",
+                "message": "Input data file not found."
+            }
+            sse_print(event, data)
+            raise ValueError('Input data file not found.')
+        else:
+            event = "input_data_validated"
+            data = {
+                "status": "success",
+                "message": "Input data file is valid and complete.",
+                "file_name": glob.glob(os.path.join(f'{args.input_path}/data', '*/'))[0]
+            }
+            sse_print(event, data)
+            
+        if not os.path.exists(f'{args.input_path}/model'):
+            event = "input_model_validated"
+            data = {
+                "status": "failure",
+                "message": "Input model file not found."
+            }
+            sse_print(event, data)
+            raise ValueError('Input model file not found.')
+        else:
+            event = "input_model_validated"
+            data = {
+                "status": "success",
+                "message": "Input model file is valid and complete.",
+                "file_name": glob.glob(os.path.join(f'{args.input_path}/model', '*'))[0]
+            }
+            sse_print(event, data)
+
+def sse_output_path_validated(args):
+    if not os.path.exists(args.output_path):
+        event = "output_path_validated"
+        data = {
+            "status": "failure",
+            "message": "Output path not found."
+        }
+        sse_print(event, data)
+        raise ValueError('Output path not found.')
+    else:
+        event = "output_path_validated"
+        data = {
+            "status": "success",
+            "message": "Output path is valid and complete.",
+            "file_name": args.output_path
+        }
+        sse_print(event, data)
+        
+
 def sse_adv_samples_gen_validated(adv_image_name):
         event = "adv_samples_gen_validated"
         data = {
@@ -50,6 +102,16 @@ def sse_adv_samples_gen_validated(adv_image_name):
         }
         sse_print(event, data)
 
+
+def sse_clean_samples_gen_validated(clean_image_name):
+        event = "clean_samples_gen_validated"
+        data = {
+            "status": "success",
+            "message": "clean sample is generated.",
+            "file_name": clean_image_name
+        }
+        sse_print(event, data)
+        
 # def sse_input_validated(input_path):
 #     if not os.path.exists(input_path):
 #         event = "input_validated"
