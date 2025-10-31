@@ -8,12 +8,15 @@ FROM python:3.8
 WORKDIR /project
 
 # 文件到工作目录
-COPY vehicle/requirements.txt ./
+COPY vehicle_yolo/requirements.txt ./
 # 安装依赖 （合并RUN减少镜像层）
 RUN pip install --no-cache-dir torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu121 && \
     pip install --no-cache-dir -r requirements.txt
 
-COPY vehicle/ ./
+RUN pip uninstall opencv-python && \
+    pip install opencv-python-headless
+
+COPY vehicle_yolo/ ./
 
 # 指定容器启动时运行的命令
 CMD ["python", "main.py"]

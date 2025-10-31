@@ -1,4 +1,4 @@
-path: ./input/data/0imagenet10/
+path: ./input/data/coco8/
 train: images/train
 val: images/val
 test: null

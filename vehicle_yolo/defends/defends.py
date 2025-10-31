@@ -22,6 +22,9 @@ from utils.sse import sse_clean_samples_gen_validated
 
 from defends.ipeg_compression import JpegCompression
 from defends.jpeg_scale import JpegScale
+from defends.neural_cleanse import NeuralCleanse
+from defends.pgd_purifier import PGDPurifier
+from defends.fgsm_denoise import FGSMDenoise
 
 class defends:
     def __init__(self, cfg, args):
@@ -48,15 +51,23 @@ class defends:
                                 scale=0.9,
                                 interp="bilinear"
                             )
+        elif args.defend_method == 'neural_cleanse':
+            self.defend = NeuralCleanse(kernel_size=3)
+        elif args.defend_method == 'pgd':
+            self.defend = PGDPurifier(steps=10, alpha=1.0, epsilon=8.0)
+        elif args.defend_method == 'fgsm':
+            self.defend = FGSMDenoise(epsilon=8.0)
         else:
-            raise ValueError('Invalid attach method!')
+            raise ValueError('Invalid defend method!')
             
         
             
     def get_dataloader(self) -> torch.utils.data.DataLoader:
         if str(self.cfg.data).rsplit(".", 1)[-1] in {"yaml", "yml"}:
             data = check_det_dataset(self.cfg.data)
-            dataset = build_yolo_dataset(self.cfg, data.get(self.cfg.split), self.cfg.batch, data, mode="val", stride=self.model.stride)
+            # Use a default stride for dataset building in defend pipeline
+            #dataset = build_yolo_dataset(self.cfg, data.get(self.cfg.split), self.cfg.batch, data, mode="val", stride=self.model.stride)
+            dataset = build_yolo_dataset(self.cfg, data.get(self.cfg.split), self.cfg.batch, data, mode="val", stride=32)
             dataloader = build_dataloader(dataset, self.cfg.batch, self.cfg.workers, shuffle=False, rank=-1, drop_last=self.cfg.compile, pin_memory=False)
         elif self.cfg.task == "classify":
             data = check_cls_dataset(self.cfg.data, split=self.cfg.split)
@@ -86,12 +97,17 @@ class defends:
         for batch_i, batch in enumerate(bar):
             batch = self.preprocess(batch)
             if args.defend_method == 'comp':
-                clean_image, _ = self.defend(batch["img"].numpy())
-                clean_image = tensor.from_numpy(clean_image)
+                #clean_image, _ = self.defend(batch["img"].numpy())
+                #clean_image = tensor.from_numpy(clean_image)
+                clean_image, _ = self.defend(batch["img"].detach().cpu().numpy())
+                clean_image = torch.from_numpy(clean_image)
             elif args.defend_method == 'scale':
                 clean_image, _ = self.defend(batch["img"])
+                #clean_image, _ = self.defend(batch["img"].detach().cpu())
+            elif args.defend_method in ['neural_cleanse', 'pgd', 'fgsm']:
+                clean_image, _ = self.defend(batch["img"].detach().cpu())
             else:
-                raise ValueError('Invalid attach method!')
+                raise ValueError('Invalid defend method!')
             from torchvision import transforms
             to_pil = transforms.ToPILImage()
             pil_image = to_pil(clean_image[0])

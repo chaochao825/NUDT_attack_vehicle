@@ -13,13 +13,13 @@ def parse_args():
     parser.add_argument('--input_path', type=str, default='./input', help='input path')
     parser.add_argument('--output_path', type=str, default='./output', help='output path')
     
-    parser.add_argument('--process', type=str, default='defend', help='[adv, attack, defend, train]')
+    parser.add_argument('--process', type=str, default='adv', help='[adv, attack, defend, train]')
     parser.add_argument('--model', type=str, default='yolov8', help='model name [yolov5, yolov8, yolov10]')
     parser.add_argument('--data', type=str, default='imagenet10', help='data name [coco8, imagenet10]')
     parser.add_argument('--task', type=str, default='classify', help='task name [detect for coco8, classify for imagenet10]')
-    parser.add_argument('--class_number', type=int, default=80, help='number of class [80 for coco8, 10 for imagenet10]')
+    parser.add_argument('--class_number', type=int, default=10, help='number of class [80 for coco8, 10 for imagenet10]')
     
-    parser.add_argument('--attack_method', type=str, default='cw', help='attack method [cw, deepfool, bim, fgsm, pdg]')
+    parser.add_argument('--attack_method', type=str, default='pdg', help='attack method [cw, deepfool, bim, fgsm, pdg]')
     parser.add_argument('--defend_method', type=str, default='scale', help='defend method [scale, comp]')
     
     parser.add_argument('--cfg_path', type=str, default='./cfgs', help='cfg path')

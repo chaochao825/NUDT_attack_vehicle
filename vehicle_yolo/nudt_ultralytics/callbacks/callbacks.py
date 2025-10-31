@@ -79,13 +79,7 @@ def on_model_save(trainer):
 
 def on_train_end(trainer):
     """Called when the training ends."""
-    event = "task_completed"
-    data = {
-        "status": "success",
-        "message": "Task completed successfully.",
-        "summary": trainer.metrics
-    }
-    sse_print(event, data)
+    pass
 
 
 def on_params_update(trainer):
@@ -95,7 +89,13 @@ def on_params_update(trainer):
 
 def teardown(trainer):
     """Called during the teardown of the training process."""
-    pass
+    event = "task_completed"
+    data = {
+        "status": "success",
+        "message": "Task completed successfully.",
+        "summary": trainer.metrics
+    }
+    sse_print(event, data)
 
 
 # Validator callbacks --------------------------------------------------------------------------------------------------

@@ -12,7 +12,7 @@ from ultralytics import YOLO
 
 from ultralytics.data.utils import check_cls_dataset, check_det_dataset
 from ultralytics.data import build_yolo_dataset, ClassificationDataset, build_dataloader
-from ultralytics.utils import TQDM, emojis
+from ultralytics.utils import TQDM, emojis  
 from ultralytics.utils.torch_utils import select_device
 
 # from ultralytics.models.classify. import ClassificationValidator
