@@ -33,7 +33,7 @@ class attacks:
         self.device = self.model.device
             
     def get_dataloader(self) -> torch.utils.data.DataLoader:
-        if str(self.cfg.data).rsplit(".", 1)[-1] in {"yaml", "yml"}:
+        if self.cfg.task == "detect":
             data = check_det_dataset(self.cfg.data)
             dataset = build_yolo_dataset(self.cfg, data.get(self.cfg.split), self.cfg.batch, data, mode="val", stride=self.model.stride)
             dataloader = build_dataloader(dataset, self.cfg.batch, self.cfg.workers, shuffle=False, rank=-1, drop_last=self.cfg.compile, pin_memory=False)
@@ -58,7 +58,7 @@ class attacks:
         return batch
 
     def run_adv(self, args):
-        os.makedirs(f'{self.cfg.save_dir}/clean_images', exist_ok=True)
+        os.makedirs(f'{self.cfg.save_dir}/adv_images', exist_ok=True)
         dataloader = self.get_dataloader()
         desc = self.get_desc()
         bar = TQDM(dataloader, desc=desc, total=len(dataloader))
@@ -79,7 +79,6 @@ class attacks:
         
             from torchvision import transforms
             to_pil = transforms.ToPILImage()
-            print(adv_images[0].shape)
             pil_image = to_pil(adv_images[0])
             adv_image_name = f'{self.cfg.save_dir}/adv_images/adv_image_{batch_i}.jpg'
             pil_image.save(adv_image_name)

@@ -4,30 +4,9 @@ from easydict import EasyDict
 import os
 import glob
 
-from utils.sse import sse_input_path_validated, sse_output_path_validated #, sse_working_path_created, sse_source_unzip_completed
+from utils.sse import sse_input_path_validated, sse_output_path_validated
 from utils.yaml_rw import load_yaml, save_yaml
 from nudt_ultralytics.main import main as yolo
-
-model_list = [
-    "yolov5n",
-    "yolov8n",
-    "yolov10n",
-]
-
-dataset_list = [
-    "coco8",
-    "coco128",
-    "coco",
-    "imagenet",
-]
-
-attach_method_list = [
-    "fgsm",
-    "bim",
-    "pgd",
-    "cw",
-    "deepfool",
-]
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -35,21 +14,18 @@ def parse_args():
     parser.add_argument('--output_path', type=str, default='./output', help='output path')
     
     parser.add_argument('--process', type=str, default='defend', help='[adv, attack, defend, train]')
-    parser.add_argument('--model', type=str, default='yolov5', help='model name')
-    parser.add_argument('--data', type=str, default='imagenet10', help='data name')
-    # parser.add_argument('--data', type=str, default='coco8', help='data name')
-    parser.add_argument('--class_number', type=int, default=10, help='number of class')
-    # parser.add_argument('--class_number', type=int, default=80, help='number of class')
+    parser.add_argument('--model', type=str, default='yolov8', help='model name [yolov5, yolov8, yolov10]')
+    parser.add_argument('--data', type=str, default='imagenet10', help='data name [coco8, imagenet10]')
+    parser.add_argument('--task', type=str, default='classify', help='task name [detect for coco8, classify for imagenet10]')
+    parser.add_argument('--class_number', type=int, default=80, help='number of class [80 for coco8, 10 for imagenet10]')
     
     parser.add_argument('--attack_method', type=str, default='cw', help='attack method [cw, deepfool, bim, fgsm, pdg]')
     parser.add_argument('--defend_method', type=str, default='scale', help='defend method [scale, comp]')
     
-    parser.add_argument('--task', type=str, default='classify', help='task name')
-    # parser.add_argument('--task', type=str, default='detect', help='task name')
     parser.add_argument('--cfg_path', type=str, default='./cfgs', help='cfg path')
     
     parser.add_argument('--epochs', type=int, default=100, help='epochs')
-    parser.add_argument('--batch', type=int, default=256, help='batch size')
+    parser.add_argument('--batch', type=int, default=8, help='batch size')
     parser.add_argument('--device', type=int, default=0, help='which gpu for cuda')
     parser.add_argument('--workers', type=int, default=0, help='dataloader workers (per RANK if DDP)')
     

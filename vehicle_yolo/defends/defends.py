@@ -20,7 +20,7 @@ from nudt_ultralytics.callbacks.callbacks import callbacks_dict
 
 from utils.sse import sse_clean_samples_gen_validated
 
-# from defends.ipeg_compression import JpegCompression
+from defends.ipeg_compression import JpegCompression
 from defends.jpeg_scale import JpegScale
 
 class defends:
@@ -87,6 +87,7 @@ class defends:
             batch = self.preprocess(batch)
             if args.defend_method == 'comp':
                 clean_image, _ = self.defend(batch["img"].numpy())
+                clean_image = tensor.from_numpy(clean_image)
             elif args.defend_method == 'scale':
                 clean_image, _ = self.defend(batch["img"])
             else:

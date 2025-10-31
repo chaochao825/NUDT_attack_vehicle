@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from tqdm.auto import tqdm
 
-# from art.config import ART_NUMPY_DTYPE
+from art.config import ART_NUMPY_DTYPE
 
 
 if TYPE_CHECKING:
