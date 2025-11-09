@@ -1,11 +1,11 @@
-task: classify
+task: detect
 mode: predict
 model: ./cfgs/yolov8.yaml
-data: ./input/data/imagenet10/
-imgsz: 224
+data: ./cfgs/coco8.yaml
+imgsz: 640
 epochs: 100
 batch: 1
-device: 0
+device: cpu
 workers: 8
 pretrained: ./input/model/yolov8_det.pt
 resume: false

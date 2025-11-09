@@ -327,7 +327,6 @@ class BasePredictor:
             for self.batch in self.dataset:
                 self.run_callbacks("on_predict_batch_start")
                 paths, im0s, s = self.batch
-
                 # Preprocess
                 with profilers[0]:
                     im = self.preprocess(im0s)
@@ -362,7 +361,7 @@ class BasePredictor:
                 # Print batch results
                 if self.args.verbose:
                     LOGGER.info("\n".join(s))
-
+                
                 self.run_callbacks("on_predict_batch_end")
                 yield from self.results
 
@@ -395,6 +394,7 @@ class BasePredictor:
             model (str | Path | torch.nn.Module, optional): Model to load or use.
             verbose (bool): Whether to print verbose output.
         """        
+        
         self.model = AutoBackend(
             model=model or self.args.model,
             device=select_device(self.args.device, verbose=verbose),

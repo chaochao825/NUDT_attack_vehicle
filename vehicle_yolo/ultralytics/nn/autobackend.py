@@ -158,6 +158,7 @@ class AutoBackend(nn.Module):
             verbose (bool): Enable verbose logging.
         """
         super().__init__()
+        # print('model', model) # ./input/model/yolov8_cls.pt
         nn_module = isinstance(model, torch.nn.Module)
         (
             pt,
@@ -192,7 +193,9 @@ class AutoBackend(nn.Module):
 
         # Download if not local
         w = attempt_download_asset(model) if pt else model  # weights path
-
+        # print(w) # input/model/yolov8_cls.pt
+        # print('nn_module', nn_module) # False
+        # print('pt', pt) # True
         # PyTorch (in-memory or file)
         if nn_module or pt:
             if nn_module:
@@ -206,8 +209,9 @@ class AutoBackend(nn.Module):
             else:  # pt file
                 from ultralytics.nn.tasks import load_checkpoint
 
+                # print(model) # input/model/yolov8_cls.pt
                 model, _ = load_checkpoint(model, device=device, fuse=fuse)  # load model, ckpt
-
+                # print(model) # ClassificationModel
             # Common PyTorch model processing
             if hasattr(model, "kpt_shape"):
                 kpt_shape = model.kpt_shape  # pose-only
@@ -218,7 +222,7 @@ class AutoBackend(nn.Module):
             for p in model.parameters():
                 p.requires_grad = False
             self.model = model  # explicitly assign for to(), cpu(), cuda(), half()
-
+            # print(self.model)
         # TorchScript
         elif jit:
             import torchvision  # noqa - https://github.com/ultralytics/ultralytics/pull/19747
@@ -634,11 +638,11 @@ class AutoBackend(nn.Module):
             im = im.half()  # to FP16
         if self.nhwc:
             im = im.permute(0, 2, 3, 1)  # torch BCHW to numpy BHWC shape(1,320,192,3)
-
         # PyTorch
         if self.pt or self.nn_module:
+            # print(im.requires_grad) # True
             y = self.model(im, augment=augment, visualize=visualize, embed=embed, **kwargs)
-
+            # print(y) # y is tuple
         # TorchScript
         elif self.jit:
             y = self.model(im)

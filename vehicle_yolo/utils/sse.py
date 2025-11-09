@@ -163,7 +163,7 @@ def sse_adv_samples_gen_validated(adv_image_name):
         event = "adv_samples_gen_validated"
         data = {
             "status": "success",
-            "message": "adv sample is generated.",
+            "message": "adversarial sample is generated.",
             "file_name": adv_image_name
         }
         sse_print(event, data)
@@ -238,5 +238,15 @@ def sse_source_unzip_completed(dataset_path, working_path):
             "output_directory": dataset_working_path
         }
         sse_print(event, data)
+
+def sse_model_loaded(model_name, weight_path):
+    event = "model_loaded"
+    data = {
+        "status": "success",
+        "message": "Model loaded successfully.",
+        "model_name": model_name,
+        "weight_path": weight_path
+    }
+    sse_print(event, data)
 
     

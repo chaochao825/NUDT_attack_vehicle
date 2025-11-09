@@ -1,9 +1,9 @@
 from typing import Any, Dict
 import torch
 import torch.nn as nn
-import torch.optim as optim
+from torch.nn import functional as F
 import os
-
+import glob
 import yaml
 from easydict import EasyDict
 
@@ -11,26 +11,52 @@ from ultralytics import YOLO
 
 
 from ultralytics.data.utils import check_cls_dataset, check_det_dataset
-from ultralytics.data import build_yolo_dataset, ClassificationDataset, build_dataloader
+from ultralytics.data import build_yolo_dataset, ClassificationDataset_nudt, build_dataloader
 from ultralytics.utils import TQDM, emojis
 from ultralytics.utils.torch_utils import select_device
 
-# from ultralytics.models.classify. import ClassificationValidator
+# from ultralytics.models.yolo.classify.predict import ClassificationPredictor
+from ultralytics.nn.tasks import ClassificationModel, DetectionModel
+from ultralytics.nn.tasks import torch_safe_load
 
 from nudt_ultralytics.callbacks.callbacks import callbacks_dict
+from ultralytics.utils import callbacks
 
-from utils.sse import sse_adv_samples_gen_validated
+from utils.sse import sse_adv_samples_gen_validated, sse_model_loaded
+from utils.yaml_rw import load_yaml
 
 class attacks:
-    def __init__(self, cfg):
-        self.cfg = cfg
-        # self.model = YOLO(model=cfg.model, task=cfg.task, verbose=cfg.verbose).load(cfg.pretrained)  # task: 'detect', 'segment', 'classify', 'pose', 'obb'. verbose: Display model info on load.
-        self.model = YOLO(model=cfg.pretrained, task=cfg.task, verbose=cfg.verbose) # task: 'detect', 'segment', 'classify', 'pose', 'obb'. verbose: Display model info on load.
-        for (event, func) in callbacks_dict.items():
-            self.model.add_callback(event, func)
+    def __init__(self, args):
+        self.args = args
+        self.cfg = EasyDict(load_yaml(args.cfg_yaml))
+        self.device = self.cfg.device
+        if self.cfg.task == "detect":
+            self.model = DetectionModel(cfg=self.cfg.model, ch=3, nc=self.args.class_number, verbose=self.cfg.verbose)
+            # print(self.model)
+            ckpt, file = torch_safe_load(self.cfg.pretrained)
+            self.model.load(weights=ckpt["model"])
+            sse_model_loaded(model_name=self.args.model, weight_path=self.cfg.pretrained)
+            # for param in self.model.parameters():
+            #     print(param)
+            
+            data = check_det_dataset(self.cfg.data)
+            self.dataset = build_yolo_dataset(self.cfg, data.get(self.cfg.split), self.cfg.batch, data, mode="val", stride=self.model.stride)
+            self.dataloader = build_dataloader(self.dataset, self.cfg.batch, self.cfg.workers, shuffle=False, rank=-1, drop_last=self.cfg.compile, pin_memory=False)
+            
+        elif self.cfg.task == "classify":
+            self.model = ClassificationModel(cfg=self.cfg.model, ch=3, nc=self.args.class_number, verbose=self.cfg.verbose)
+            # print(self.model)
+            
+            ckpt, file = torch_safe_load(self.cfg.pretrained)
+            self.model.load(weights=ckpt["model"])
+            sse_model_loaded(model_name=self.args.model, weight_path=self.cfg.pretrained)
+            # for param in self.model.parameters():
+            #     print(param)
+            
+            data = check_cls_dataset(self.cfg.data, split=self.cfg.split)
+            self.dataset = ClassificationDataset_nudt(root=data.get(self.cfg.split), args=self.cfg, augment=self.cfg.augment, prefix=self.cfg.split)
+            self.dataloader = build_dataloader(self.dataset, self.cfg.batch, self.cfg.workers, rank=-1)
         
-        self.model.overrides = cfg
-        self.device = self.model.device
             
     def get_dataloader(self) -> torch.utils.data.DataLoader:
         if self.cfg.task == "detect":
@@ -46,47 +72,73 @@ class attacks:
 
         return dataloader
     
-    def get_desc(self) -> str:
-        """Return a formatted string summarizing classification metrics."""
-        return ("%22s" + "%11s" * 2) % ("classes", "top1_acc", "top5_acc")
-
+    def save_adv_image(self, adv_image, ori_image_file):
+        ori_cls_flod = ori_image_file.split('/')[-2]
+        ori_image_file = ori_image_file.split('/')[-1]
+        dataset_name = glob.glob(os.path.join(f'{self.args.input_path}/data', '*/'))[0].split('/')[-2]
+        os.makedirs(f'{self.cfg.save_dir}/adv_{dataset_name}/{self.cfg.split}/{ori_cls_flod}', exist_ok=True)
+        adv_image_name = f'{self.cfg.save_dir}/adv_{dataset_name}/{self.cfg.split}/{ori_cls_flod}/{ori_image_file}'
+        
+        from torchvision import transforms
+        to_pil = transforms.ToPILImage()
+        pil_image = to_pil(adv_image)
+        pil_image.save(adv_image_name)
+        sse_adv_samples_gen_validated(adv_image_name)
+        
     def preprocess(self, batch: Dict[str, Any]) -> Dict[str, Any]:
         """Preprocess input batch by moving data to device and converting to appropriate dtype."""
-        batch["img"] = batch["img"].to(self.device, non_blocking=self.device.type == "cuda")
+        batch["img"] = batch["img"].to(self.device)
         batch["img"] = batch["img"].half() if self.cfg.half else batch["img"].float()
-        batch["cls"] = batch["cls"].to(self.device, non_blocking=self.device.type == "cuda")
+        batch["cls"] = batch["cls"].to(self.device)
         return batch
 
-    def run_adv(self, args):
-        os.makedirs(f'{self.cfg.save_dir}/adv_images', exist_ok=True)
-        dataloader = self.get_dataloader()
-        desc = self.get_desc()
-        bar = TQDM(dataloader, desc=desc, total=len(dataloader))
-        for batch_i, batch in enumerate(bar):
+    def run_adv(self):
+        for batch_i, batch in enumerate(self.dataloader):
+            # print(batch.keys())
             batch = self.preprocess(batch)
-            if args.attack_method == 'pgd':
-                adv_images = self.pgd(batch["img"], batch["cls"], eps=args.epsilon, alpha=args.step_size, steps=args.max_iterations, random_start=args.random_start)
-            elif args.attack_method == 'fgsm':
-                adv_images = self.fgsm(batch["img"], batch["cls"], eps=args.epsilon)
-            elif args.attack_method == 'cw':
-                adv_images = self.cw(batch["img"], batch["cls"], c=1, kappa=0, steps=args.max_iterations, lr=0.01)
-            elif args.attack_method == 'bim':
-                adv_images = self.bim(batch["img"], batch["cls"], eps=args.epsilon, alpha=args.step_size, steps=args.max_iterations)
-            elif args.attack_method == 'deepfool':
-                adv_images, _ = self.deepfool(batch["img"], batch["cls"], steps=args.max_iterations, overshoot=0.02)
+            if self.args.attack_method == 'pgd':
+                adv_images = self.pgd(batch["img"], batch["cls"], eps=self.args.epsilon, alpha=self.args.step_size, steps=self.args.max_iterations, random_start=self.args.random_start, loss_function=self.args.loss_function)
+            elif self.args.attack_method == 'fgsm':
+                adv_images = self.fgsm(batch["img"], batch["cls"], eps=self.args.epsilon, loss_function=self.args.loss_function)
+            elif self.args.attack_method == 'cw':
+                adv_images = self.cw(batch["img"], batch["cls"], c=1, kappa=0, steps=self.args.max_iterations, lr=self.args.lr, optimization_method=self.args.optimization_method)
+            elif self.args.attack_method == 'bim':
+                adv_images = self.bim(batch["img"], batch["cls"], eps=self.args.epsilon, alpha=self.args.step_size, steps=self.args.max_iterations, loss_function=self.args.loss_function)
+            elif self.args.attack_method == 'deepfool':
+                adv_images, _ = self.deepfool(batch["img"], batch["cls"], steps=self.args.max_iterations, overshoot=0.02)
             else:
                 raise ValueError('Invalid attach method!')
         
-            from torchvision import transforms
-            to_pil = transforms.ToPILImage()
-            pil_image = to_pil(adv_images[0])
-            adv_image_name = f'{self.cfg.save_dir}/adv_images/adv_image_{batch_i}.jpg'
-            pil_image.save(adv_image_name)
-            sse_adv_samples_gen_validated(adv_image_name)
-        
+            self.save_adv_image(adv_image=adv_images[0], ori_image_file=batch["im_file"][0])
+            if batch_i == self.args.gen_adv_sample_num - 1:
+                break
+            
+    def gen_loss_fn(self, name):
+        loss_fn = name.lower()
+        if loss_fn == 'cross_entropy':
+            loss_function = F.cross_entropy
+        elif loss_fn == 'mse':
+            loss_function = F.mse_loss
+        elif loss_fn == 'l1':
+            loss_function = F.l1_loss
+        elif loss_fn == 'binary_cross_entropy':
+            loss_function = F.binary_cross_entropy
+        else:
+            raise ValueError("Invalid Loss Type!")
+        return loss_function
+    
+    def get_optimizer(self, name, param, lr):
+        optimization_method = name.lower()
+        if optimization_method == 'sgd':
+            optimizer = torch.optim.SGD(param, lr=lr)
+        elif self.hparams.optimizer.lower() == 'adam':
+            optimizer = torch.optim.Adam(param, lr=lr)
+        else:
+            raise ValueError('Invalid optimizer type!')
 ###################################################################################################################################################
+    
 
-    def pgd(self, images, labels, eps=8 / 255, alpha=2 / 255, steps=10, random_start=True):
+    def pgd(self, images, labels, eps=8 / 255, alpha=2 / 255, steps=10, random_start=True, loss_function='cross_entropy'):
         '''
         PGD in the paper 'Towards Deep Learning Models Resistant to Adversarial Attacks'
         [https://arxiv.org/abs/1706.06083]
@@ -105,35 +157,32 @@ class attacks:
             - output: :math:`(N, C, H, W)`.
         '''
         
-        loss_fn = nn.CrossEntropyLoss()
+        loss_fn = self.gen_loss_fn(loss_function)
         adv_images = images.clone().detach()
         
         if random_start:
             # Starting at a uniformly random point
             adv_images = adv_images + torch.empty_like(adv_images).uniform_(-eps, eps)
-            adv_images = torch.clamp(adv_images, min=0, max=1).detach().detach()
+            adv_images = torch.clamp(adv_images, min=0, max=1).detach()
         
         for _ in range(steps):
             adv_images.requires_grad = True
-            
-            results = self.model(adv_images, stream=False)
-            preds = [result.probs.data for result in results] # # Probs object for classification outputs
-            preds = torch.stack(preds)
-            
+            preds = self.model.predict(x=adv_images)
+            print(len(preds))
             outputs = preds.to(self.device)
             loss = loss_fn(outputs, labels)
             
             # Update adversarial images
             grad = torch.autograd.grad(loss, adv_images, retain_graph=False, create_graph=False)[0]
             
-            adv_images = adv_images.detach() + self.alpha * grad.sign()
-            delta = torch.clamp(adv_images - images, min=-self.eps, max=self.eps)
+            adv_images = adv_images.detach() + alpha * grad.sign()
+            delta = torch.clamp(adv_images - images, min=-eps, max=eps)
             adv_images = torch.clamp(images + delta, min=0, max=1).detach()
 
         return adv_images
     
     
-    def fgsm(self, images, labels, eps=8 / 255):
+    def fgsm(self, images, labels, eps=8 / 255, loss_function='cross_entropy'):
         '''
         FGSM in the paper 'Explaining and harnessing adversarial examples'
         [https://arxiv.org/abs/1412.6572]
@@ -148,12 +197,10 @@ class attacks:
             - labels: :math:`(N)` where each value :math:`y_i` is :math:`0 \leq y_i \leq` `number of labels`.
             - output: :math:`(N, C, H, W)`.
         '''
-        loss_fn = nn.CrossEntropyLoss()
+        loss_fn = self.gen_loss_fn(loss_function)
         images.requires_grad = True
         
-        results = self.model(images, stream=False)
-        preds = [result.probs.data for result in results] # # Probs object for classification outputs
-        preds = torch.stack(preds)
+        preds = self.model.predict(x=images)
         
         outputs = preds.to(self.device)
         loss = loss_fn(outputs, labels)
@@ -165,7 +212,7 @@ class attacks:
 
         return adv_images
     
-    def cw(self, images, labels, c=1, kappa=0, steps=50, lr=0.01):
+    def cw(self, images, labels, c=1, kappa=0, steps=50, lr=0.01, loss_function='mse', optimization_method='adam'):
         '''
         CW in the paper 'Towards Evaluating the Robustness of Neural Networks'
         [https://arxiv.org/abs/1608.04644]
@@ -196,10 +243,12 @@ class attacks:
         prev_cost = 1e10
         dim = len(images.shape)
 
-        MSELoss = nn.MSELoss(reduction="none")
+        # MSELoss = nn.MSELoss(reduction="none")
+        MSELoss = self.gen_loss_fn(loss_function)
         Flatten = nn.Flatten()
 
-        optimizer = optim.Adam([w], lr=lr)
+        # optimizer = optim.Adam([w], lr=lr)
+        optimizer = get_optimizer(optimization_method, [w], lr)
 
         for step in range(steps):
             # Get adversarial images
@@ -269,7 +318,7 @@ class attacks:
         
         
         
-    def bim(self, images, labels, eps=8 / 255, alpha=2 / 255, steps=10):
+    def bim(self, images, labels, eps=8 / 255, alpha=2 / 255, steps=10, loss_function='cross_entropy'):
         '''
         BIM or iterative-FGSM in the paper 'Adversarial Examples in the Physical World'
         [https://arxiv.org/abs/1607.02533]
@@ -291,16 +340,14 @@ class attacks:
         if steps == 0:
             steps = int(min(eps * 255 + 4, 1.25 * eps * 255))
         
-        loss_fn = nn.CrossEntropyLoss()
+        loss_fn = self.gen_loss_fn(loss_function)
 
         ori_images = images.clone().detach()
 
         for _ in range(steps):
             images.requires_grad = True
             
-            results = self.model(images, stream=False)
-            preds = [result.probs.data for result in results] # # Probs object for classification outputs
-            preds = torch.stack(preds)
+            preds = self.model.predict(x=images)
 
             outputs = preds.to(self.device)
             loss = loss_fn(outputs, labels)
@@ -357,9 +404,7 @@ class attacks:
     def _forward_indiv(self, image, label):
         image.requires_grad = True
         
-        results = self.model(image, stream=False)
-        preds = [result.probs.data for result in results] # # Probs object for classification outputs
-        preds = torch.stack(preds)
+        preds = self.model.predict(x=image)
         
         fs = preds.to(self.device)
         _, pre = torch.max(fs, dim=-1)

@@ -185,6 +185,7 @@ class BaseModel(torch.nn.Module):
                 embeddings.append(torch.nn.functional.adaptive_avg_pool2d(x, (1, 1)).squeeze(-1).squeeze(-1))  # flatten
                 if m.i == max_idx:
                     return torch.unbind(torch.cat(embeddings, 1), dim=0)
+        
         return x
 
     def _predict_augment(self, x):
@@ -1437,9 +1438,10 @@ def torch_safe_load(weight, safe_only=False):
         >>> ckpt, file = torch_safe_load("path/to/best.pt", safe_only=True)
     """
     from ultralytics.utils.downloads import attempt_download_asset
-
+    
     check_suffix(file=weight, suffix=".pt")
     file = attempt_download_asset(weight)  # search online if missing locally
+    
     try:
         with temporary_modules(
             modules={
@@ -1533,7 +1535,7 @@ def load_checkpoint(weight, device=None, inplace=True, fuse=False):
             m.inplace = inplace
         elif isinstance(m, torch.nn.Upsample) and not hasattr(m, "recompute_scale_factor"):
             m.recompute_scale_factor = None  # torch 1.11.0 compatibility
-
+    
     # Return model and ckpt
     return model, ckpt
 

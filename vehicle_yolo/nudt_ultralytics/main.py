@@ -87,8 +87,8 @@ def main(args):
         results = model.val(data=cfg.data)
     elif args.process == 'adv':
         from attacks.attacks import attacks
-        att = attacks(cfg)
-        att.run_adv(args)
+        att = attacks(args)
+        att.run_adv()
     
 
 def parse_args():
